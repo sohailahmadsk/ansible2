@@ -1,0 +1,52 @@
+#Playbook for install & configuring Redis.
+---
+  - name: Play for Installing Redis Cache Server
+    hosts: redisserver
+    become: yes
+    become_user: root
+    gather_facts: yes #Default Yes
+    pre_tasks:
+    - name: Check The Port Usage of Redis
+      shell: netstat -nltp | grep -i 6379
+      register: redis
+    - name: Print Register Result
+      debug:
+        msg: "{{ redis.stdout }}"      
+    tasks:
+    - name: Perform apt update
+      shell: apt update
+    - name: Copy Redis Config File
+      copy:
+        src: redis.conf
+        dest: /etc/redis/redis.conf
+        owner: root
+        group: root
+        mode: 0644
+      notify:
+        - restart redis
+    - name: Ensure Redis is present
+      apt: >
+       pkg=redis-server 
+       state=latest
+    - name: Ensure Redis is started
+      service: >
+       name=redis-server 
+       state=started 
+       enabled=yes
+    handlers:
+      - name: restart redis
+        command: sudo service redis-server restart
+    post_tasks:
+      - name: Check The Port Usage of Redis
+        shell: netstat -nltp | grep -i 6379
+        register: redis
+      - name: Print Register Result
+        debug:
+          msg: "{{ redis.stdout }}"
+      - name: Ping Google.com
+        shell: hostname && ping -c 5 www.google.com
+        register: ping
+        delegate_to: 127.0.0.1
+      - name: Print ping
+        debug:
+          msg: "{{ ping.stdout }}"
